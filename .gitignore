@@ -1,0 +1,6 @@
+__pycache__/
+*.contour
+*.path
+*.param
+*.mp4
+*.gif
