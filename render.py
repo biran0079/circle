@@ -11,57 +11,99 @@ from core import moon,cn, base_name
 
 
 
-def init():
-    ax.clear()
-    global lines,path, path_x, path_y,circles
-    lines = [ax.plot([],[])[0] for i in range(len(C))]
-    ps = moon(N,C,0)
-    circles = [plt.Circle((-1,-1), np.abs(ps[i]), fill=False) for i in range(len(C))]
-    for circle in circles:
-        ax.add_artist(circle) 
-    ax.set(xlim=[0,1], ylim=[0,1])
-    ax.axis('off')
-    path_x = []
-    path_y = []
-    path = ax.plot([],[])[0]
+class Renderer:
+    def __init__(self, N, C, frame=500, hide_lines=False, hide_circles=False):
+        # sort N in order 0, 1, -1, 2, -2 ...
+        nc = np.array(sorted(zip(N,C), key=lambda x:abs(x[0])))
+        self.N = nc[:,0]
+        self.C = nc[:,1]
+        self.frame = frame
+        self.hide_lines = hide_lines
+        self.hide_circles = hide_circles
 
-def ani(t): 
-    print(t)
-    ps=moon(N,C,t)
-    p=0j 
-    for idx in range(len(C)):
-        q=ps[idx]+p
-        circles[idx].center = (p.real, p.imag)
-        lines[idx].set_data([p.real,q.real], [p.imag,q.imag])
-        p=q
-    path_x.append(p.real)
-    path_y.append(p.imag)
-    path.set_data(path_x, path_y)
+    def _init_lines(self):
+        if self.hide_lines:
+            return
+        self.lines = [self.ax.plot([],[])[0] for i in range(len(self.C))]
+
+    def _init_circles(self):
+        if self.hide_circles:
+            return
+        ps = moon(self.N, self.C, 0)
+        self.circles = [plt.Circle((-1,-1), np.abs(ps[i]), fill=False) for i in range(len(self.C))]
+        for circle in self.circles:
+            self.ax.add_artist(circle) 
+
+    def _init_frame(self):
+        self._init_lines()
+        self._init_circles()
+        self.ax.set(xlim=[0,1], ylim=[0,1])
+        self.ax.axis('off')
+        self.path_x = []
+        self.path_y = []
+        self.path = self.ax.plot([],[])[0]
+
+    def _render_lines(self, ps):
+        if self.hide_lines:
+            return
+        p = 0j 
+        for idx in range(len(ps)):
+            q=ps[idx]
+            self.lines[idx].set_data([p.real,q.real], [p.imag,q.imag])
+            p = q
+
+    def _render_circles(self, ps):
+        if self.hide_circles:
+            return
+        p=0j 
+        for idx in range(len(ps)):
+            self.circles[idx].center = (p.real, p.imag)
+            p = ps[idx]
+
+    def _render_frame(self, t): 
+        progress = 100 * t / 2 / np.pi
+        print(f'{progress} %')
+        ps = np.cumsum(moon(self.N, self.C, t))
+        self._render_lines(ps)
+        self._render_circles(ps)
+        p = ps[-1]
+        self.path_x.append(p.real)
+        self.path_y.append(p.imag)
+        self.path.set_data(self.path_x, self.path_y)
+
+    def render(self):
+        self.fig, self.ax = pylab.subplots()
+        axcolor = 'lightgoldenrodyellow'
+        self.animation = FuncAnimation(self.fig, 
+                self._render_frame,
+                frames=np.linspace(0, 2 * np.pi, self.frame),
+                interval=10,
+                init_func=self._init_frame,
+                repeat=False)
+
+    def save(self, out_fname):
+        if not out_fname:
+            out_fname = base_name(args.file_name) + '.mp4'
+        print(f'saving to {out_fname}')
+        self.animation.save(out_fname, writer=FFMpegWriter(fps=50, bitrate=100))
 
 
 def main(args):
-    global N,C
     N,C = pickle.load(open(args.file_name, 'rb'))
-    nc = np.array(sorted(zip(N,C), key=lambda x:abs(x[0])))
-    N = nc[:,0]
-    C = nc[:,1]
-
-    axcolor = 'lightgoldenrodyellow'
-
-    animation = FuncAnimation(fig, ani,frames=np.linspace(0, 2 * np.pi, args.frame), interval=10, init_func=init, repeat=False)
+    renderer = Renderer(N, C, args.frame, args.hide_lines, args.hide_circles)
+    renderer.render()
     if args.save:
-        writer = FFMpegWriter(fps=20, metadata=dict(artist='Ran Bi'), bitrate=1800)
-        out_fname = base_name(args.file_name) + ".mp4"
-        print(f'saving to {out_fname}')
-        animation.save(out_fname, writer=writer)
+        renderer.save(args.out)
     plt.show()
 
 if __name__ == '__main__':
-    fig, ax = pylab.subplots()
     import argparse
     parser = argparse.ArgumentParser()
     parser.add_argument('file_name', type=str, help='path to contour file')
     parser.add_argument('--save', default=False, action='store_true', help='save animation')
+    parser.add_argument('--hide_lines', default=False, action='store_true', help='hide lines')
+    parser.add_argument('--hide_circles', default=False, action='store_true', help='hide circles')
     parser.add_argument('--frame', type=int, default=500, help='number of frames to finish the plot.')
+    parser.add_argument('--out', default=None, type=str, help='save animation to output file name')
     args = parser.parse_args()
     main(args)
