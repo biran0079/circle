@@ -35,9 +35,33 @@ def mst(a):
 
 def rearange_leave_order(dis, g):
     # makes sure closeset leaf are start and end of dfs
-    leaves = [i for i in range(len(g)) if len(g[i]) == 1]
+    leaves = [i for i in range(len(g)) if len(g[i]) % 2 ==  1]
     pairs = [(leaves[i], leaves[j]) for i in range(len(leaves)) for j in range(i + 1, len(leaves))]
-    st, ed = min(pairs, key=lambda x:dis[x[0]][x[1]])
+    vis=set()
+    def dfs2(i,ed, res):
+        vis.add(i)
+        if i == ed: return res
+        for j in g[i]:
+            if j not in vis:
+                t= dfs2(j, ed, res+dis[i][j])
+                if t is not None:
+                    return t
+        return None
+
+    def dfs3(st,ed):
+        vis.clear()
+        return dfs2(st,ed,0)
+
+    close_pairs = [(i,j) for (i,j) in pairs if dis[i][j] < 0.05]
+    if close_pairs:
+        if len(close_pairs) > 100:
+            close_pairs = sorted(close_pairs, key=lambda x:dis[x[0]][x[1]])[:100]
+
+        print(f'searching for st and ed points in {len(close_pairs)} pairs')
+        _,st,ed = max([(dfs3(i,j),i,j) for (i,j) in close_pairs])
+    else:
+        st, ed = min(pairs, key=lambda x:dis[x[0]][x[1]])
+
     vis = set()
     def dfs(i):
         vis.add(i)
@@ -76,15 +100,14 @@ def generate_path(centroids, g, st, ed):
 
 
 def main(args):
-    contours = pickle.load(open(args.file_name, 'rb'))
-    data = np.concatenate(contours, axis=0)
+    data = pickle.load(open(args.file_name, 'rb'))
     path = []
     axcolor = 'lightgoldenrodyellow'
     pylab.subplots_adjust(bottom=0.15)
     ratio = fig.add_axes([0.15, 0.07, 0.55, 0.02], facecolor=axcolor)
     kratio = fig.add_axes([0.15, 0.03, 0.55, 0.02], facecolor=axcolor)
     sratio = Slider(ratio, 'ratio', 1, 20, valinit=10, valstep=1)
-    skratio = Slider(kratio, 'k-ratio', 0.05, 0.95, valinit=0.2, valstep=0.01)
+    skratio = Slider(kratio, 'k-ratio', 0.05, 0.95, valinit=0.1, valstep=0.01)
     save = fig.add_axes([0.8, 0.05, 0.1, 0.04])
     bsave = Button(save, 'save', color=axcolor, hovercolor='0.975')
     def save(_):
@@ -93,23 +116,22 @@ def main(args):
         pickle.dump(np.array(path[0]), open(out_fname, 'wb'))
 
     bsave.on_clicked(save)
-    params = [10,0.2]
+    params = [10,0.1]
     def update():
         ratio,k = params
         t = data[::ratio]
         k = (int)(k * len(t))
         print(f'searching {k} centroid of {len(t)} points')
         centroids,_ = kmeans(t, k)
-        print(f'searching mst for {len(t)} centroids')
+        print(f'searching mst for {len(centroids)} centroids')
         dis,g = mst(centroids)
         st,ed = rearange_leave_order(dis, g)
         print(f'start: {centroids[st]}, end: {centroids[ed]}')
         t = generate_path(centroids, g, st, ed)
-        print(f'path: {t}')
         path.clear()
         path.append(t)
         ax.clear()
-        ax.set_title(str(len(t)))
+        ax.set_title(f'{len(t) * 1.0 / k}')
         ax.plot(t[:,0], t[:,1])
 
     def update_ratio(v):
