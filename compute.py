@@ -18,7 +18,12 @@ def main(args):
     circleN = args.num_circle_pairs
     dt = args.dt
     N = np.array(range(-circleN, circleN + 1))
-    C = np.array([cn(n, f, dt) for n in N])
+    C = []
+    for i in range(len(N)):
+        C.append(cn(N[i], f, dt))
+        if i % 100 == 0:
+            print(f'{i * 100.0 / len(N)} %')
+    C = np.array(C)
     out_fname = base_name(args.file_name) + ".param"
     print(f'saving to {out_fname}')
     pickle.dump((N,C), open(out_fname, 'wb'))
