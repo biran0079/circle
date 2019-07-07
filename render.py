@@ -12,22 +12,21 @@ from core import moon,cn, base_name
 
 
 class Renderer:
-    def __init__(self, N, C, frame=500, hide_lines=False, hide_circles=False):
+    def __init__(self, N, C, frame, hide):
         # sort N in order 0, 1, -1, 2, -2 ...
         nc = np.array(sorted(zip(N,C), key=lambda x:abs(x[0])))
         self.N = nc[:,0]
         self.C = nc[:,1]
         self.frame = frame
-        self.hide_lines = hide_lines
-        self.hide_circles = hide_circles
+        self.hide = hide
 
     def _init_lines(self):
-        if self.hide_lines:
+        if self.hide:
             return
         self.lines = [self.ax.plot([],[])[0] for i in range(len(self.C))]
 
     def _init_circles(self):
-        if self.hide_circles:
+        if self.hide:
             return
         ps = moon(self.N, self.C, 0)
         self.circles = [plt.Circle((-1,-1), np.abs(ps[i]), fill=False) for i in range(len(self.C))]
@@ -44,7 +43,7 @@ class Renderer:
         self.path = self.ax.plot([],[])[0]
 
     def _render_lines(self, ps):
-        if self.hide_lines:
+        if self.hide:
             return
         p = 0j 
         for idx in range(len(ps)):
@@ -53,7 +52,7 @@ class Renderer:
             p = q
 
     def _render_circles(self, ps):
-        if self.hide_circles:
+        if self.hide:
             return
         p=0j 
         for idx in range(len(ps)):
@@ -85,24 +84,24 @@ class Renderer:
         if not out_fname:
             out_fname = base_name(args.file_name) + '.mp4'
         print(f'saving to {out_fname}')
-        self.animation.save(out_fname, writer=FFMpegWriter(fps=50, bitrate=1000))
+        self.animation.save(out_fname, writer=FFMpegWriter(fps=50, bitrate=300))
 
 
 def main(args):
     N,C = pickle.load(open(args.file_name, 'rb'))
-    renderer = Renderer(N, C, args.frame, args.hide_lines, args.hide_circles)
+    renderer = Renderer(N, C, args.frame, args.hide)
     renderer.render()
     if args.save:
         renderer.save(args.out)
-    plt.show()
+    else:
+        plt.show()
 
 if __name__ == '__main__':
     import argparse
     parser = argparse.ArgumentParser()
     parser.add_argument('file_name', type=str, help='path to contour file')
     parser.add_argument('--save', default=False, action='store_true', help='save animation')
-    parser.add_argument('--hide_lines', default=False, action='store_true', help='hide lines')
-    parser.add_argument('--hide_circles', default=False, action='store_true', help='hide circles')
+    parser.add_argument('--hide', default=False, action='store_true', help='hide lines and circles')
     parser.add_argument('--frame', type=int, default=500, help='number of frames to finish the plot.')
     parser.add_argument('--out', default=None, type=str, help='save animation to output file name')
     args = parser.parse_args()

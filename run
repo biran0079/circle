@@ -2,7 +2,8 @@
 file=$1
 base=$(basename $file | cut -d. -f1)
 python3 ./find_contour.py $file
-python3 ./find_path.py $base.contour
+python3 ./down_sample.py $base.contour
+python3 ./find_path.py $base.sample
 python3 ./compute.py $base.path
-python3 ./render.py $base.param
+python3 ./render.py $base.param --hide
 

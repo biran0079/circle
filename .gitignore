@@ -4,3 +4,4 @@ __pycache__/
 *.param
 *.mp4
 *.gif
+*.sample
