@@ -85,7 +85,7 @@ class Renderer:
         if not out_fname:
             out_fname = base_name(args.file_name) + '.mp4'
         print(f'saving to {out_fname}')
-        self.animation.save(out_fname, writer=FFMpegWriter(fps=50, bitrate=100))
+        self.animation.save(out_fname, writer=FFMpegWriter(fps=50, bitrate=1000))
 
 
 def main(args):
