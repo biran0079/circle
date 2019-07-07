@@ -8,25 +8,35 @@ from matplotlib.widgets import Slider, Button, RadioButtons
 from scipy.sparse.csgraph import minimum_spanning_tree
 from scipy.spatial.distance import pdist, squareform
 from core import base_name
-
+from scipy.spatial import Delaunay
+import heapq
 
 
 class PathFinder:
     def __init__(self, fname):
         self.fname = fname
         self.data = pickle.load(open(fname, 'rb'))
+        self.data = np.unique(self.data, axis=0)
 
-    def _find_st_ed(self, dis, g):
+    def _dis(self, i, j):
+        return np.linalg.norm(self.data[i] - self.data[j])
+
+    def _find_st_ed(self, g):
         # makes sure closeset leaf are start and end of dfs
-        leaves = [i for i in range(len(g)) if len(g[i]) % 2 ==  1]
-        pairs = [(leaves[i], leaves[j]) for i in range(len(leaves)) for j in range(i + 1, len(leaves))]
+        leaves = [i for i in range(len(g)) if len(g[i]) ==  1]
+        print(f'{len(leaves)} leaves in mst')
+        dis = squareform(pdist(self.data[leaves]))
+        pairs = [(-dis[i][j], leaves[i], leaves[j]) for i in range(len(leaves)) for j in range(i + 1, len(leaves))]
+        close_pairs = heapq.nlargest(100, pairs)
+        print(f'{len(close_pairs)} close leave pairs in mst')
+
         vis=set()
         def dfs2(i,ed, res):
             vis.add(i)
             if i == ed: return res
-            for j in g[i]:
+            for j,d in g[i]:
                 if j not in vis:
-                    t= dfs2(j, ed, res+dis[i][j])
+                    t= dfs2(j, ed, res+d)
                     if t is not None:
                         return t
             return None
@@ -35,15 +45,8 @@ class PathFinder:
             vis.clear()
             return dfs2(st,ed,0)
 
-        close_pairs = [(i,j) for (i,j) in pairs if dis[i][j] < 0.05]
-        if close_pairs:
-            if len(close_pairs) > 100:
-                close_pairs = sorted(close_pairs, key=lambda x:dis[x[0]][x[1]])[:100]
-
-            print(f'searching for st and ed points in {len(close_pairs)} pairs')
-            _,st,ed = max([(dfs3(i,j),i,j) for (i,j) in close_pairs])
-        else:
-            st, ed = min(pairs, key=lambda x:dis[x[0]][x[1]])
+        print(f'searching for st and ed points in {len(close_pairs)} pairs')
+        _,st,ed = max([(dfs3(i,j),i,j) for (_,i,j) in close_pairs])
         return st,ed
 
     def _rearange_children_order(self, g, st, ed):
@@ -53,8 +56,8 @@ class PathFinder:
             if i == ed:
                 return True
             for j in range(len(g[i])):
-                if g[i][j] not in vis:
-                    if dfs(g[i][j]):
+                if g[i][j][0] not in vis:
+                    if dfs(g[i][j][0]):
                         g[i][j], g[i][-1] = g[i][-1], g[i][j]
                         return True
             return False
@@ -71,7 +74,7 @@ class PathFinder:
                 res.append(self.data[st])
                 return True
             leaf = True
-            for j in g[i]:
+            for j,_ in g[i]:
                     if j not in vis:
                         leaf = False
                         if dfs(j):
@@ -83,11 +86,23 @@ class PathFinder:
         dfs(st)
         return np.array(res) 
 
-    def _mst(self,a):
-        n=len(a)
+    def _mst(self):
+        print('running Delaunay triangulation')
+        n=len(self.data)
+        tri = Delaunay(self.data)
         g = [[] for i in range(n)]
-        print('building distance matrix')
-        dis = squareform(pdist(a))
+
+        edges = {}
+        nodes = set()
+        for simplex in tri.simplices:
+            nodes |= set(simplex)
+            for k in range(3):
+                i, j = simplex[k - 1], simplex[k]
+                edge = min(i,j), max(i,j)
+                if edge not in edges:
+                    edges[edge] = self._dis(i,j)
+        pq = [(d, i, j) for ((i,j),d) in edges.items()]
+        heapq.heapify(pq)
         p = list(range(n))
         def union(i,j):
             p[find(i)] = find(j)
@@ -97,24 +112,22 @@ class PathFinder:
             p[i] = find(p[i])
             return p[i]
         print('running kruskal')
-        import heapq
-        pq = [(dis[i][j], i, j) for i in range(n) for j in range(i + 1, n)]
-        heapq.heapify(pq)
-        cc = n
+        # nodes may not contain all points as some points close to each other are treated as single points
+        cc = len(nodes)
         while cc > 1:
-            _, i, j = heapq.heappop(pq)
+            d, i, j = heapq.heappop(pq)
             if find(i) != find(j):
                 union(i,j)
-                g[i].append(j)
-                g[j].append(i)
+                g[i].append((j,d))
+                g[j].append((i,d))
                 cc -= 1
-        return dis, g
+        return g
 
     def _update(self):
         print(f'searching mst for {len(self.data)} points')
-        dis,g = self._mst(self.data)
+        g = self._mst()
         print('searching st, ed')
-        st,ed = self._find_st_ed(dis, g)
+        st,ed = self._find_st_ed(g)
         print('rearanging children order')
         self._rearange_children_order(g, st, ed)
         self.path = self._generate_path(g, st, ed)
