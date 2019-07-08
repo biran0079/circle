@@ -7,29 +7,29 @@ import scipy.integrate as integrate
 import pickle
 from matplotlib.animation import FuncAnimation, FFMpegWriter
 from matplotlib.widgets import Slider, Button, RadioButtons
-from core import moon,cn, base_name
-
+from base import base_name
+from scipy.fftpack import ifft
 
 
 class Renderer:
-    def __init__(self, N, C, frame, hide):
-        # sort N in order 0, 1, -1, 2, -2 ...
-        nc = np.array(sorted(zip(N,C), key=lambda x:abs(x[0])))
-        self.N = nc[:,0]
-        self.C = nc[:,1]
-        self.frame = frame
+    def __init__(self, X, hide):
+        self.n = len(X)
+        if hide:
+            self.ps = ifft(X)
+        else:
+            self.ps_history = [[0 for i in range(self.n)]] + [ifft(X[:i + 1], n=self.n) for i in range(len(X))]
+            self.ps = self.ps_history[-1]
         self.hide = hide
 
     def _init_lines(self):
         if self.hide:
             return
-        self.lines = [self.ax.plot([],[])[0] for i in range(len(self.C))]
+        self.lines = [self.ax.plot([],[])[0] for i in range(self.n)]
 
     def _init_circles(self):
         if self.hide:
             return
-        ps = moon(self.N, self.C, 0)
-        self.circles = [plt.Circle((-1,-1), np.abs(ps[i]), fill=False) for i in range(len(self.C))]
+        self.circles = [plt.Circle((-1,-1), np.abs(self.ps_history[i+1][0] - self.ps_history[i][0]), fill=False) for i in range(self.n)]
         for circle in self.circles:
             self.ax.add_artist(circle) 
 
@@ -42,40 +42,38 @@ class Renderer:
         self.path_y = []
         self.path = self.ax.plot([],[])[0]
 
-    def _render_lines(self, ps):
+    def _render_lines(self, k):
         if self.hide:
             return
-        p = 0j 
-        for idx in range(len(ps)):
-            q=ps[idx]
-            self.lines[idx].set_data([p.real,q.real], [p.imag,q.imag])
-            p = q
+        for i in range(self.n):
+            p,q = self.ps_history[i][k], self.ps_history[i+1][k]
+            self.lines[i].set_data([p.real,q.real], [p.imag,q.imag])
 
-    def _render_circles(self, ps):
+    def _render_circles(self, k):
         if self.hide:
             return
-        p=0j 
-        for idx in range(len(ps)):
-            self.circles[idx].center = (p.real, p.imag)
-            p = ps[idx]
+        for i in range(self.n):
+            p = self.ps_history[i][k]
+            self.circles[i].center = (p.real, p.imag)
 
-    def _render_frame(self, t): 
-        progress = 100 * t / 2 / np.pi
-        print(f'{progress} %')
-        ps = np.cumsum(moon(self.N, self.C, t))
-        self._render_lines(ps)
-        self._render_circles(ps)
-        p = ps[-1]
+    def _render_frame(self, k): 
+        if k % 100 == 0:
+            progress = 100.0 * k / self.n
+            print(f'{progress} %')
+        self._render_lines(k)
+        self._render_circles(k)
+        p = self.ps[k]
         self.path_x.append(p.real)
         self.path_y.append(p.imag)
         self.path.set_data(self.path_x, self.path_y)
 
     def render(self):
+        print(f'drawing with {self.n} circles')
         self.fig, self.ax = pylab.subplots()
         axcolor = 'lightgoldenrodyellow'
         self.animation = FuncAnimation(self.fig, 
                 self._render_frame,
-                frames=np.linspace(0, 2 * np.pi, self.frame),
+                frames=range(self.n),
                 interval=10,
                 init_func=self._init_frame,
                 repeat=False)
@@ -88,8 +86,8 @@ class Renderer:
 
 
 def main(args):
-    N,C = pickle.load(open(args.file_name, 'rb'))
-    renderer = Renderer(N, C, args.frame, args.hide)
+    X = pickle.load(open(args.file_name, 'rb'))
+    renderer = Renderer(X, args.hide)
     renderer.render()
     if args.save:
         renderer.save(args.out)
@@ -102,7 +100,6 @@ if __name__ == '__main__':
     parser.add_argument('file_name', type=str, help='path to contour file')
     parser.add_argument('--save', default=False, action='store_true', help='save animation')
     parser.add_argument('--hide', default=False, action='store_true', help='hide lines and circles')
-    parser.add_argument('--frame', type=int, default=500, help='number of frames to finish the plot.')
     parser.add_argument('--out', default=None, type=str, help='save animation to output file name')
     args = parser.parse_args()
     main(args)

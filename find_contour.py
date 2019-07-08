@@ -5,7 +5,7 @@ import pickle,sys
 import argparse
 import os
 from matplotlib.widgets import Slider, Button, RadioButtons
-from core import base_name
+from base import base_name
 
 class ContourFinder:
 
