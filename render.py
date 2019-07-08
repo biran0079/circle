@@ -12,7 +12,7 @@ from scipy.fftpack import ifft
 
 
 class Renderer:
-    def __init__(self, X, hide):
+    def __init__(self, X, hide, format):
         self.n = len(X)
         if hide:
             self.ps = ifft(X)
@@ -20,6 +20,7 @@ class Renderer:
             self.ps_history = [[0 for i in range(self.n)]] + [ifft(X[:i + 1], n=self.n) for i in range(len(X))]
             self.ps = self.ps_history[-1]
         self.hide = hide
+        self.format = format
 
     def _init_lines(self):
         if self.hide:
@@ -80,14 +81,17 @@ class Renderer:
 
     def save(self, out_fname):
         if not out_fname:
-            out_fname = base_name(args.file_name) + '.mp4'
+            out_fname = base_name(args.file_name) + '.' + self.format
         print(f'saving to {out_fname}')
-        self.animation.save(out_fname, writer=FFMpegWriter(fps=50, bitrate=300))
+        if self.format == 'mp4':
+            self.animation.save(out_fname, writer=FFMpegWriter(fps=50, bitrate=300))
+        elif self.format == 'gif':
+            self.animation.save(out_fname, writer='imagemagick', fps=10, bitrate=100)
 
 
 def main(args):
     X = pickle.load(open(args.file_name, 'rb'))
-    renderer = Renderer(X, args.hide)
+    renderer = Renderer(X, args.hide, args.format)
     renderer.render()
     if args.save:
         renderer.save(args.out)
@@ -101,5 +105,6 @@ if __name__ == '__main__':
     parser.add_argument('--save', default=False, action='store_true', help='save animation')
     parser.add_argument('--hide', default=False, action='store_true', help='hide lines and circles')
     parser.add_argument('--out', default=None, type=str, help='save animation to output file name')
+    parser.add_argument('--format', default='mp4', type=str, help='save animation in format')
     args = parser.parse_args()
     main(args)
