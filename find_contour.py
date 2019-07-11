@@ -22,7 +22,7 @@ class ContourFinder:
             for coll in self.contours.collections:
                 coll.remove()
         self.contours = self.ax.contour(
-            self.img, origin='image', levels=sorted(set(self.levels)))
+            self.img, origin='image', colors='black', levels=sorted(set(self.levels)))
 
     def _update_level_fun(self, i):
         def f(v):
