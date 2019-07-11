@@ -8,7 +8,7 @@ draw anything with complex fourier transformation
 python3 -m pip install -r requirements
 ```
 1 Find an image to draw.
-![psyduck](https://github.com/biran0079/circle/blob/master/psyduc.png)
+![psyduck](https://github.com/biran0079/circle/blob/master/psyduck.png)
 2 Find contour of the image. 
 ```
 python3 find_contour.py psyduck.png
