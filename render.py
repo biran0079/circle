@@ -8,32 +8,55 @@ import pickle
 from matplotlib.animation import FuncAnimation, FFMpegWriter
 from matplotlib.widgets import Slider, Button, RadioButtons
 from base import base_name
-from scipy.fftpack import ifft
 
 
 class Renderer:
-    def __init__(self, X, hide, format):
-        self.n = len(X)
-        if hide:
-            self.ps = ifft(X)
+
+    def __init__(self, X, hide, format, n):
+        self.frames = len(X)
+        coef = np.arange(self.frames)
+        if n > 0 and n < self.frames:
+            # keep (n + 1)/ 2 first circles and n / 2 last circles
+            idx = [i for i in range(self.frames) if i < (
+                n + 1) // 2 or self.frames - i <= n // 2]
+            X = X[idx]
+            coef = coef[idx]
+            self.n = n
         else:
-            self.ps_history = [
-                [0 for i in range(self.n)]] + [ifft(X[:i + 1], n=self.n) for i in range(len(X))]
-            self.ps = self.ps_history[-1]
+            self.n = self.frames
+
+        self.pos = self._find_circle_paths(X, coef)
         self.hide = hide
         self.format = format
+
+    def _find_circle_paths(self, x, coef):
+        # pos[i][t] is the position of ith circle's center at t
+        # pos[0][t] = 0 for all t
+        # pos[i][t] = pos[i - 1][t] + factor[i][t]
+        # where factor[i][t] = x[i] * exp(2*pi*t*sqrt(-1)*i/n)
+        factor = []
+        for i in range(len(coef)):
+            factor.append(x[i] * np.exp(2 * np.pi *
+                                        1j * coef[i] * np.arange(self.frames) / self.frames) / self.frames)
+        pos = [[0 for i in range(self.frames)]]
+        for i in range(len(coef)):
+            pos.append(pos[-1] + factor[i])
+        return pos
 
     def _init_lines(self):
         if self.hide:
             return
-        self.lines = [self.ax.plot([], [])[0] for i in range(self.n)]
+        self.lines = [self.ax.plot([], [], alpha=0.3)[0]
+                      for i in range(self.n)]
 
     def _init_circles(self):
         if self.hide:
             return
-        self.circles = [plt.Circle((-1, -1), np.abs(self.ps_history[i+1]
-                                                    [0] - self.ps_history[i][0]), fill=False) for i in range(self.n)]
-        for circle in self.circles:
+        self.circles = []
+        for i in range(self.n):
+            radius = np.abs(self.pos[i+1][0] - self.pos[i][0])
+            circle = plt.Circle((-1, -1), radius, alpha=0.3, fill=False)
+            self.circles.append(circle)
             self.ax.add_artist(circle)
 
     def _init_frame(self):
@@ -49,23 +72,23 @@ class Renderer:
         if self.hide:
             return
         for i in range(self.n):
-            p, q = self.ps_history[i][k], self.ps_history[i+1][k]
+            p, q = self.pos[i][k], self.pos[i+1][k]
             self.lines[i].set_data([p.real, q.real], [p.imag, q.imag])
 
     def _render_circles(self, k):
         if self.hide:
             return
         for i in range(self.n):
-            p = self.ps_history[i][k]
+            p = self.pos[i][k]
             self.circles[i].center = (p.real, p.imag)
 
     def _render_frame(self, k):
         if k % 100 == 0:
-            progress = 100.0 * k / self.n
+            progress = 100.0 * k / self.frames
             print(f'{progress} %')
         self._render_lines(k)
         self._render_circles(k)
-        p = self.ps[k]
+        p = self.pos[self.n][k]
         self.path_x.append(p.real)
         self.path_y.append(p.imag)
         self.path.set_data(self.path_x, self.path_y)
@@ -75,7 +98,7 @@ class Renderer:
         self.fig, self.ax = pylab.subplots()
         self.animation = FuncAnimation(self.fig,
                                        self._render_frame,
-                                       frames=range(self.n),
+                                       frames=range(self.frames),
                                        interval=10,
                                        init_func=self._init_frame,
                                        repeat=False)
@@ -94,7 +117,7 @@ class Renderer:
 
 def main(args):
     X = pickle.load(open(args.file_name, 'rb'))
-    renderer = Renderer(X, args.hide, args.format)
+    renderer = Renderer(X, args.hide, args.format, args.n)
     renderer.render()
     if args.save:
         renderer.save(args.out)
@@ -114,5 +137,7 @@ if __name__ == '__main__':
                         help='save animation to output file name')
     parser.add_argument('--format', default='mp4', type=str,
                         help='save animation in format')
+    parser.add_argument('-n', default=-1, type=int,
+                        help='number of circles to use. Not limit by default.')
     args = parser.parse_args()
     main(args)

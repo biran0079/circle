@@ -31,7 +31,7 @@ class PathFinder:
         self.ax1.clear()
         self.ax2.clear()
         self.ax1.set_title(f'{str(len(self.samples))} samples')
-        self.ax1.scatter(self.samples[:, 0], self.samples[:, 1], s=0.01)
+        self.ax1.scatter(self.samples[:, 0], self.samples[:, 1], s=0.1)
         print(f'searching mst for {len(self.samples)} points')
         g = self._mst()
         print('searching st, ed')
@@ -41,7 +41,7 @@ class PathFinder:
         self.path = self._generate_path(g, st, ed)
         self.ax2.set_title(
             f'{int(len(self.path) * 100.0 / len(self.samples) - 100)} % path redundancy')
-        self.ax2.plot(self.path[:, 0], self.path[:, 1])
+        self.ax2.plot(self.path[:, 0], self.path[:, 1], alpha=0.5)
 
     def _dis(self, i, j):
         return np.linalg.norm(self.samples[i] - self.samples[j])
