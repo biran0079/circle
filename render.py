@@ -84,7 +84,7 @@ class Renderer:
             out_fname = base_name(args.file_name) + '.' + self.format
         print(f'saving to {out_fname}')
         if self.format == 'mp4':
-            self.animation.save(out_fname, writer=FFMpegWriter(fps=50, bitrate=300))
+            self.animation.save(out_fname, writer=FFMpegWriter(fps=50, bitrate=1000))
         elif self.format == 'gif':
             self.animation.save(out_fname, writer='imagemagick', fps=10, bitrate=100)
 
