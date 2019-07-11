@@ -33,3 +33,7 @@ python3 render.py psyduck.param
 ```
 
 ![psyduck](https://user-images.githubusercontent.com/661451/61032543-7c656900-a376-11e9-85be-af76735843b5.gif)
+
+You can literally draw anything!
+
+![doraemon](https://user-images.githubusercontent.com/661451/61033903-33fb7a80-a379-11e9-8b1f-f57799977bdc.gif)
