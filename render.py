@@ -103,27 +103,29 @@ class Plotter:
 
 class Renderer:
 
-    def __init__(self, X, hide, n, interval = 100):
+    def __init__(self, X, hide, n, interval = 100, hide_widgets = False):
         self.plotter = Plotter(X, hide, n)
         self.interval = interval
+        self.hide_widgets = hide_widgets
     
     def render(self):
         print(f'drawing with {self.plotter.n} circles')
         self.fig, self.ax = pylab.subplots()
-        pylab.subplots_adjust(bottom = 0.1)
-        rax = plt.axes([0.05, 0.0, 0.1, 0.1])
-        rax.axis('off')
-        self.check = CheckButtons(rax, ('hide',), (self.plotter.hide,))
-        self.check.on_clicked(lambda _: self.plotter.toggle_hide())
-        
-        nax = self.fig.add_axes([0.2, 0.07, 0.7, 0.02])
-        self.nslider = Slider(nax, 'n', 2, self.plotter.n,
-                           valinit = self.plotter.n, valstep = 1)
-        self.nslider.on_changed(self._update_n)
-        fpsax = self.fig.add_axes([0.2, 0.03, 0.7, 0.02])
-        self.fpsslider = Slider(fpsax, 'fps', 1, 50,
-                           valinit = 10, valstep = 1)
-        self.fpsslider.on_changed(self._update_fps)
+        if not self.hide_widgets:
+            pylab.subplots_adjust(bottom = 0.1)
+            rax = plt.axes([0.05, 0.0, 0.1, 0.1])
+            rax.axis('off')
+            self.check = CheckButtons(rax, ('hide',), (self.plotter.hide,))
+            self.check.on_clicked(lambda _: self.plotter.toggle_hide())
+            
+            nax = self.fig.add_axes([0.2, 0.07, 0.7, 0.02])
+            self.nslider = Slider(nax, 'n', 2, self.plotter.frames,
+                            valinit = self.plotter.n, valstep = 1)
+            self.nslider.on_changed(self._update_n)
+            fpsax = self.fig.add_axes([0.2, 0.03, 0.7, 0.02])
+            self.fpsslider = Slider(fpsax, 'fps', 1, 50,
+                            valinit = 10, valstep = 1)
+            self.fpsslider.on_changed(self._update_fps)
         self._init_animation()
 
     def _init_animation(self):
@@ -154,7 +156,7 @@ class Renderer:
 
 def main(args):
     X = pickle.load(open(args.file_name, 'rb'))
-    renderer = Renderer(X, args.hide, args.n)
+    renderer = Renderer(X, args.hide, args.n, hide_widgets=args.save)
     pylab.rcParams['toolbar'] = 'None'
     renderer.render()
     if args.save:
