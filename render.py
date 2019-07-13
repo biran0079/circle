@@ -155,6 +155,7 @@ class Renderer:
 def main(args):
     X = pickle.load(open(args.file_name, 'rb'))
     renderer = Renderer(X, args.hide, args.n)
+    pylab.rcParams['toolbar'] = 'None'
     renderer.render()
     if args.save:
         renderer.save(args.out)
