@@ -53,6 +53,7 @@ class ContourFinder:
                     res.append(point)
         res = np.array(res)
         res = np.unique(res, axis=0)
+        # normalize to fit into into 1 x 1 difure
         res = res / (1.05 * np.max(res))
         pickle.dump(res, open(out_fname, 'wb'))
 

@@ -39,6 +39,12 @@ class PathFinder:
         print('rearanging children order')
         self._rearange_children_order(g, st, ed)
         self.path = self._generate_path(g, st, ed)
+        # connect start and end if not too far apart
+        max_dis = max([np.linalg.norm(self.path[i-1] - self.path[i])
+                       for i in range(1, len(self.path))])
+        if self._dis(st, ed) < 2 * max_dis:
+            self.path.append(self.samples[st])
+        self.path = np.array(self.path)
         self.ax2.set_title(
             f'{int(len(self.path) * 100.0 / len(self.samples) - 100)} % path redundancy')
         self.ax2.plot(self.path[:, 0], self.path[:, 1], alpha=0.5)
@@ -49,7 +55,7 @@ class PathFinder:
     def _find_farthest_leaf_pair(self, g):
         def dfs(i, parent):
             """
-            Return 
+            Return
                 - farthest leaf id in thissubtree and distance to root i
                 - farthest leave pair in this subtree and distance between them
             """
@@ -122,7 +128,7 @@ class PathFinder:
                 res.append(self.samples[i])
             return False
         dfs(st)
-        return np.array(res)
+        return res
 
     def _mst(self):
         print('running Delaunay triangulation')
@@ -184,7 +190,8 @@ class PathFinder:
         pylab.subplots_adjust(bottom=0.15)
         ratio = self.fig.add_axes([0.15, 0.07, 0.55, 0.02], facecolor=axcolor)
         kratio = self.fig.add_axes([0.15, 0.03, 0.55, 0.02], facecolor=axcolor)
-        self.sratio = Slider(ratio, 'ratio', 0.05, 1, valinit=1, valstep=0.05)
+        self.sratio = Slider(ratio, 'ratio', 0.05, 1,
+                             valinit=1, valstep=0.05)
         self.skratio = Slider(kratio, 'k-ratio', 0.05,
                               1, valinit=1, valstep=0.05)
         self.skratio.on_changed(self._update_k_ratio)
