@@ -14,18 +14,11 @@ Find an image to draw.
 
 
 ```
-python3 find_contour.py psyduck.png
+python3 compute.py psyduck.png
 ```
 
-![find_contour](https://user-images.githubusercontent.com/661451/61032397-37d9cd80-a376-11e9-8f26-a154da89c034.png)
 
-```
-python3 find_path.py psyduck.contour
-```
-
-![find_path](https://user-images.githubusercontent.com/661451/61032416-43c58f80-a376-11e9-9888-74c476ed0003.png)
-
-Ideal number of samples in the path should be less than 500, otherwise your screen will be full of circles and animation will be slow to render.
+![compute](https://user-images.githubusercontent.com/661451/61169180-ced98d80-a50e-11e9-878a-dc638ad2c205.PNG)
 
 
 ```
