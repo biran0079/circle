@@ -152,7 +152,7 @@ class Renderer:
             out_fname = base_name(args.file_name) + '.mp4'
         print(f'saving to {out_fname}')
         self.animation.save(
-            out_fname, writer=FFMpegWriter(fps=20, bitrate=1000))
+            out_fname, writer=FFMpegWriter(fps=10, bitrate=1000))
 
 def main(args):
     X = pickle.load(open(args.file_name, 'rb'))

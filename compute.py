@@ -37,8 +37,7 @@ class ParamComputer:
 
     def _initialize_raw_data(self):
         self.raw_data = []
-        segs = np.array(self.contours.allsegs) / \
-            max(self.img.width, self.img.height)
+        segs = np.array(self.contours.allsegs) / max(self.img.width, self.img.height)
         reverse_idx = {}
         self.contour_ax.clear()
         self.contour_ax.axis('off')
@@ -63,6 +62,8 @@ class ParamComputer:
         self.raw_data = np.array(self.raw_data)
 
     def _smooth_path(self, path):
+        if self.smooth_window == 1:
+            return path
         print('smoothing path with savgol_filter')
         before_len = sum(np.linalg.norm(path[i]-path[i-1]) for i in range(1, len(path)))
         from scipy.signal import savgol_filter
@@ -74,6 +75,8 @@ class ParamComputer:
         return path
 
     def _rdp_downsample(self, path):
+        if self.epsilon == 0:
+            return path
         print('down sampling path with rdp')
         before_n = len(path)
         path = rdp(path, epsilon=self.epsilon)
@@ -95,6 +98,7 @@ class ParamComputer:
                            for i in range(1, len(path))])
             print(f'max dis on path: {max_dis}')
             if self._dis(st, ed) < 2 * max_dis:
+                print('connecting end and start')
                 path.append(self.samples[st])
             path = self._smooth_path(path)
             path = self._rdp_downsample(path)
@@ -145,13 +149,13 @@ class ParamComputer:
             farthest_leaf_pair = None
             farthest_leaf_pair_dis = -1
             leave_dis = []
-            for j, d in g[i]:
+            for j, _ in g[i]:
                 if j == parent:
                     continue
                 l, ld, pair, pair_dis = dfs(j, i)
-                leave_dis.append((ld + d, l))
-                if ld + d > farthest_leaf_dis:
-                    farthest_leaf_dis = ld + d
+                leave_dis.append((ld + 1, l))
+                if ld + 1 > farthest_leaf_dis:
+                    farthest_leaf_dis = ld + 1
                     farthest_leaf = l
                 if farthest_leaf_pair_dis < pair_dis:
                     farthest_leaf_pair = pair
@@ -300,12 +304,12 @@ class ParamComputer:
         self.sratio.on_changed(self._update_sample_ratio)
         epsilon = self.fig.add_axes(
             [0.15, 0.015 * (len(self.levels) + 2), 0.7, 0.01])
-        self.sepsilon = Slider(epsilon, 'epsilon', 0.001, 0.05,
+        self.sepsilon = Slider(epsilon, 'epsilon', 0.00, 0.03,
                              valinit=self.epsilon, valstep=0.001)
         self.sepsilon.on_changed(self._update_epsilon)
         window = self.fig.add_axes(
             [0.15, 0.015 * (len(self.levels) + 3), 0.7, 0.01])
-        self.swindow = Slider(window, 'smooth window', 3, 99,
+        self.swindow = Slider(window, 'smooth window', 1, 99,
                              valinit=self.smooth_window, valstep=2)
         self.swindow.on_changed(self._update_smooth_window)
         self._update()
