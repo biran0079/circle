@@ -31,4 +31,5 @@ python3 render.py psyduck.param
 
 You can literally draw anything!
 
-![doraemon](https://user-images.githubusercontent.com/661451/61033903-33fb7a80-a379-11e9-8b1f-f57799977bdc.gif)
+![doraemon](https://user-images.githubusercontent.com/661451/61179283-55947600-a5b4-11e9-88fd-c3663ca0d6cf.gif)
+
