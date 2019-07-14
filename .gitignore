@@ -1,7 +1,5 @@
 __pycache__/
 .vscode/
-*.contour
-*.path
 *.param
 *.mp4
-*.sample
+*.gif
