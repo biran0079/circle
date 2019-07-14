@@ -1,4 +1,6 @@
 # circle
+[![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/biran0079/circle/master?filepath=psyduck.ipynb)
+
 Draw anything with discrete fourier transform.
 ![github logo](https://user-images.githubusercontent.com/661451/61032364-27c1ee00-a376-11e9-9535-443d3fc5af2c.gif)
 
