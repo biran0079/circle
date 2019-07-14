@@ -17,6 +17,7 @@ from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from matplotlib.figure import Figure
 from tkinter.filedialog import askopenfilename
 from functools import partial
+from rdp import rdp
 
 class ParamComputer:
     def __init__(self, file_name, level_n):
@@ -28,22 +29,58 @@ class ParamComputer:
                 ("image files", "*.jpg *.gif *.png")])
         self.img = Image.open(self.file_name)
         self.imgL = self.img.convert('L')
-        self.sample_ratio = 1
+        self.sample_ratio = 0.3
+        self.smooth_window = 11
+        self.epsilon = 0.01
         self.levels = [100 for i in range(level_n)]
         self.contours = None
 
     def _initialize_raw_data(self):
-        res = []
-        for seg in self.contours.allsegs:
+        self.raw_data = []
+        segs = np.array(self.contours.allsegs) / \
+            max(self.img.width, self.img.height)
+        reverse_idx = {}
+        self.contour_ax.clear()
+        self.contour_ax.axis('off')
+        self.contour_ax.set_title(f'{sum(len(seg) for seg in segs)} contours')
+        self.contour_ax.set(xlim=(0, 1), ylim=(0, 1))
+        for seg in segs:
             for poly in seg:
-                for point in poly:
-                    res.append(point)
-        res = np.array(res)
-        res = np.unique(res, axis=0)
-        # normalize to fit into into 1 x 1 difure
-        res = res / (1.05 * np.max(res))
-        self.raw_data = np.array(res)
-    
+                # down sample 1: make points more discrete
+                poly = (np.array(poly) * 1000).astype(int) / 1000
+                poly = [tuple(p) for p in poly]
+
+                # index points and deduplicate points shared cross polygons
+                poly2 = []
+                for p in poly:
+                    if p not in reverse_idx:
+                        reverse_idx[p] = len(reverse_idx)
+                        self.raw_data.append(np.array(p))
+                        poly2.append(p)
+                self.contour_ax.plot([p[0] for p in poly2], [
+                                        p[1] for p in poly2])
+       
+        self.raw_data = np.array(self.raw_data)
+
+    def _smooth_path(self, path):
+        print('smoothing path with savgol_filter')
+        before_len = sum(np.linalg.norm(path[i]-path[i-1]) for i in range(1, len(path)))
+        from scipy.signal import savgol_filter
+        path = np.array(path)
+        path[:,0] = savgol_filter(path[:,0], self.smooth_window, 2)
+        path[:,1] = savgol_filter(path[:,1], self.smooth_window, 2)
+        after_len = sum(np.linalg.norm(path[i]-path[i-1]) for i in range(1, len(path)))
+        print(f'path length after smoothing: {before_len} -> {after_len}')
+        return path
+
+    def _rdp_downsample(self, path):
+        print('down sampling path with rdp')
+        before_n = len(path)
+        path = rdp(path, epsilon=self.epsilon)
+        after_n = len(path)
+        print(f'samples on path path after rdp: {before_n} -> {after_n}')
+        return path
+
     def _compute_path(self):
         def do_work(self):
             print(f'searching mst for {len(self.samples)} points')
@@ -55,9 +92,12 @@ class ParamComputer:
             path = self._generate_path(g, st, ed)
             # connect start and end if not too far apart
             max_dis = max([np.linalg.norm(path[i-1] - path[i])
-                        for i in range(1, len(path))])
+                           for i in range(1, len(path))])
+            print(f'max dis on path: {max_dis}')
             if self._dis(st, ed) < 2 * max_dis:
                 path.append(self.samples[st])
+            path = self._smooth_path(path)
+            path = self._rdp_downsample(path)
             self.path = np.array(path)
         # Workaround stack size limit on windows.
         # https://stackoverflow.com/questions/2917210/python-what-is-the-hard-recursion-limit-for-linux-mac-and-windows/2918118#2918118
@@ -73,22 +113,21 @@ class ParamComputer:
             for coll in self.contours.collections:
                 coll.remove()
         self.contours = self.contour_ax.contour(
-            self.imgL, origin='image', colors='black', levels=sorted(set(self.levels)))
+            self.imgL, origin='image', levels=sorted(set(self.levels)))
         self._initialize_raw_data()
+        # down sample 2: randomly choose points with sample ratio
         indices = np.random.choice(len(self.raw_data), int(
             len(self.raw_data) * self.sample_ratio), replace=False)
         self.samples = self.raw_data[indices]
         self.sample_ax.clear()
         self.path_ax.clear()
         self.image_ax.axis('off')
-        self.contour_ax.axis('off')
         self.sample_ax.axis('off')
         self.path_ax.axis('off')
         self.sample_ax.set_title(f'{str(len(self.samples))} samples')
         self.sample_ax.scatter(self.samples[:, 0], self.samples[:, 1], s=0.1)
         self._compute_path()
-        self.path_ax.set_title(
-            f'{int(len(self.path) * 100.0 / len(self.samples) - 100)} % path redundancy')
+        self.path_ax.set_title(f'{len(self.path)} points on path')
         self.path_ax.plot(self.path[:, 0], self.path[:, 1], alpha=0.5)
 
     def _dis(self, i, j):
@@ -227,6 +266,14 @@ class ParamComputer:
             self._update()
         return f
 
+    def _update_epsilon(self, v):
+        self.epsilon = v
+        self._update()
+
+    def _update_smooth_window(self, v):
+        self.smooth_window = int(v)
+        self._update()
+
     def render(self):
         self.fig = Figure(figsize=(13, 13), dpi=100)
         ((self.image_ax, self.contour_ax),  (self.sample_ax,
@@ -237,21 +284,30 @@ class ParamComputer:
         canvas.get_tk_widget().pack(side=tkinter.TOP, fill=tkinter.BOTH, expand=1)
 
         self.image_ax.set_title('image')
-        self.contour_ax.set_title('contour')
         self.image_ax.imshow(self.img)
         self.level_sliders = []
         for i in range(len(self.levels)):
             level = self.fig.add_axes(
                 [0.15, 0.015 * (i + 1), 0.7, 0.01])
-            slevel = Slider(level, f'level {i}', 0, 255, valinit=100)
+            slevel = Slider(level, f'contour level {i}', 0, 255, valinit=100)
             slevel.on_changed(self._update_level_fun(i))
             self.level_sliders.append(slevel)
         self.fig.set_size_inches([13, 13])
         ratio = self.fig.add_axes(
             [0.15, 0.015 * (len(self.levels) + 1), 0.7, 0.01])
         self.sratio = Slider(ratio, 'sample ratio', 0.01, 1,
-                             valinit=1, valstep=0.01)
+                             valinit=self.sample_ratio, valstep=0.01)
         self.sratio.on_changed(self._update_sample_ratio)
+        epsilon = self.fig.add_axes(
+            [0.15, 0.015 * (len(self.levels) + 2), 0.7, 0.01])
+        self.sepsilon = Slider(epsilon, 'epsilon', 0.001, 0.05,
+                             valinit=self.epsilon, valstep=0.001)
+        self.sepsilon.on_changed(self._update_epsilon)
+        window = self.fig.add_axes(
+            [0.15, 0.015 * (len(self.levels) + 3), 0.7, 0.01])
+        self.swindow = Slider(window, 'smooth window', 3, 99,
+                             valinit=self.smooth_window, valstep=2)
+        self.swindow.on_changed(self._update_smooth_window)
         self._update()
         tkinter.mainloop()
 
