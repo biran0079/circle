@@ -16,11 +16,10 @@ Find an image to draw.
 
 
 ```
-python3 compute.py psyduck.png
+python3 compute.py -f psyduck.png
 ```
 
-
-![compute](https://user-images.githubusercontent.com/661451/61169180-ced98d80-a50e-11e9-878a-dc638ad2c205.PNG)
+![compute](https://user-images.githubusercontent.com/661451/61180160-ec6a2e00-a5c6-11e9-8e61-0b261e3e4ed3.PNG)
 
 
 ```
