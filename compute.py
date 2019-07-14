@@ -37,14 +37,14 @@ class ParamComputer:
 
     def _initialize_raw_data(self):
         self.raw_data = []
-        segs = np.array(self.contours.allsegs) / max(self.img.width, self.img.height)
         reverse_idx = {}
         self.contour_ax.clear()
         self.contour_ax.axis('off')
-        self.contour_ax.set_title(f'{sum(len(seg) for seg in segs)} contours')
+        self.contour_ax.set_title(f'{sum(len(seg) for seg in self.contours.allsegs)} contours')
         self.contour_ax.set(xlim=(0, 1), ylim=(0, 1))
-        for seg in segs:
+        for seg in self.contours.allsegs:
             for poly in seg:
+                poly = np.array(poly) / max(self.img.width, self.img.height)
                 # down sample 1: make points more discrete
                 poly = (np.array(poly) * 1000).astype(int) / 1000
                 poly = [tuple(p) for p in poly]
@@ -86,6 +86,9 @@ class ParamComputer:
 
     def _compute_path(self):
         def do_work(self):
+            if len(self.samples) <= 1:
+                self.path = np.array([])
+                return
             print(f'searching mst for {len(self.samples)} points')
             g = self._mst()
             print('searching st, ed')
@@ -132,7 +135,8 @@ class ParamComputer:
         self.sample_ax.scatter(self.samples[:, 0], self.samples[:, 1], s=0.1)
         self._compute_path()
         self.path_ax.set_title(f'{len(self.path)} points on path')
-        self.path_ax.plot(self.path[:, 0], self.path[:, 1], alpha=0.5)
+        if len(self.path):
+            self.path_ax.plot(self.path[:, 0], self.path[:, 1], alpha=0.5)
 
     def _dis(self, i, j):
         return np.linalg.norm(self.samples[i] - self.samples[j])
