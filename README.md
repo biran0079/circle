@@ -16,14 +16,14 @@ Find an image to draw.
 
 
 ```
-python3 compute.py -f psyduck.png
+python3 compute.py  # select image file
 ```
 
 ![compute](https://user-images.githubusercontent.com/661451/61180160-ec6a2e00-a5c6-11e9-8e61-0b261e3e4ed3.PNG)
 
 
 ```
-python3 render.py psyduck.param
+python3 render.py  # select psyduck.py
 ```
 
 ![psyduck](https://user-images.githubusercontent.com/661451/61032543-7c656900-a376-11e9-85be-af76735843b5.gif)

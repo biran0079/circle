@@ -1,6 +1,5 @@
 from scipy.interpolate import interp1d
 from PIL import Image
-import pylab
 import numpy as np
 import matplotlib.pyplot as plt
 import scipy.integrate as integrate
@@ -11,6 +10,11 @@ from base import base_name
 from matplotlib.widgets import CheckButtons
 import time
 from functools import partial
+import tkinter
+from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+from matplotlib.figure import Figure
+from tkinter.filedialog import askopenfilename
+from tkinter.filedialog import askopenfilename
 
 class Plotter:
 
@@ -48,7 +52,7 @@ class Plotter:
     def _init_lines(self, ax):
         self.lines = [ax.plot([], [], alpha=0.3)[0]
                       for i in range(self.n)]
-    
+
     def _init_circles(self, ax):
         self.circles = []
         for i in range(self.n):
@@ -103,30 +107,40 @@ class Plotter:
 
 class Renderer:
 
-    def __init__(self, X, hide, n, interval = 100, hide_widgets = False):
+    def __init__(self, file_name, hide, n, interval=100, hide_widgets=False):
+        self.root = tkinter.Tk()
+        if not file_name:
+            file_name = askopenfilename(initialdir="output", title="Select param", filetypes=[
+                ("param files", "*.param")])
+        X = pickle.load(open(file_name, 'rb'))
         self.plotter = Plotter(X, hide, n)
         self.interval = interval
         self.hide_widgets = hide_widgets
-    
+
     def render(self):
         print(f'drawing with {self.plotter.n} circles')
-        self.fig, self.ax = pylab.subplots()
+        self.fig = Figure(figsize=(13, 13), dpi=100)
+        self.ax = self.fig.subplots()
+        self.root.wm_title(f"Render - {base_name(args.file_name, True)}")
+        canvas = FigureCanvasTkAgg(self.fig, master=self.root)
+        canvas.draw()
+        canvas.get_tk_widget().pack(side=tkinter.TOP, fill=tkinter.BOTH, expand=1)
         if not self.hide_widgets:
-            pylab.subplots_adjust(bottom = 0.1)
-            rax = plt.axes([0.05, 0.0, 0.1, 0.1])
+            rax = self.fig.add_axes([0.05, 0.0, 0.1, 0.1])
             rax.axis('off')
             self.check = CheckButtons(rax, ('hide',), (self.plotter.hide,))
             self.check.on_clicked(lambda _: self.plotter.toggle_hide())
-            
+
             nax = self.fig.add_axes([0.2, 0.07, 0.7, 0.02])
             self.nslider = Slider(nax, 'n', 2, self.plotter.frames,
-                            valinit = self.plotter.n, valstep = 1)
+                                  valinit=self.plotter.n, valstep=1)
             self.nslider.on_changed(self._update_n)
             fpsax = self.fig.add_axes([0.2, 0.03, 0.7, 0.02])
             self.fpsslider = Slider(fpsax, 'fps', 1, 50,
-                            valinit = 10, valstep = 1)
+                                    valinit=10, valstep=1)
             self.fpsslider.on_changed(self._update_fps)
         self._init_animation()
+        tkinter.mainloop()
 
     def _init_animation(self):
         self.animation = FuncAnimation(self.fig,
@@ -134,7 +148,8 @@ class Renderer:
                                        frames=range(self.plotter.frames),
                                        interval=self.interval,
                                        repeat_delay=1000,
-                                       init_func=partial(self.plotter.init_frame, self.ax),
+                                       init_func=partial(
+                                           self.plotter.init_frame, self.ax),
                                        repeat=True)
 
     def _update_fps(self, fps):
@@ -149,26 +164,24 @@ class Renderer:
 
     def save(self, out_fname):
         if not out_fname:
-            out_fname = base_name(args.file_name) + '.mp4'
+            out_fname = f'output/{base_name(args.file_name)}.mp4'
         print(f'saving to {out_fname}')
         self.animation.save(
             out_fname, writer=FFMpegWriter(fps=10, bitrate=1000))
 
+
 def main(args):
-    X = pickle.load(open(args.file_name, 'rb'))
-    renderer = Renderer(X, args.hide, args.n, hide_widgets=args.save)
-    pylab.rcParams['toolbar'] = 'None'
+    renderer = Renderer(args.file_name, args.hide, args.n, hide_widgets=args.save)
     renderer.render()
     if args.save:
         renderer.save(args.out)
-    else:
-        plt.show()
 
 
 if __name__ == '__main__':
     import argparse
     parser = argparse.ArgumentParser()
-    parser.add_argument('file_name', type=str, help='path to contour file')
+    parser.add_argument('-f', '--file_name', type=str,
+                        default='', help='path to contour file')
     parser.add_argument('--save', default=False,
                         action='store_true', help='save animation')
     parser.add_argument('--hide', default=False,

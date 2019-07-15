@@ -1,6 +1,5 @@
 import numpy as np
 from PIL import Image
-import pylab
 import pickle
 import sys
 import argparse
@@ -260,7 +259,7 @@ class ParamComputer:
 
     def save(self):
         X = fft(self.path[..., 0] + self.path[..., 1] * 1j)
-        out_fname = base_name(self.file_name) + ".param"
+        out_fname = f'output/{base_name(self.file_name)}.param'
         print(f'saving to {out_fname}')
         pickle.dump(X, open(out_fname, 'wb'))
 
