@@ -16,7 +16,7 @@ from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from matplotlib.figure import Figure
 from tkinter.filedialog import askopenfilename
 from functools import partial
-from rdp import rdp
+from crdp import rdp
 
 class ParamComputer:
     def __init__(self, file_name, level_n):
