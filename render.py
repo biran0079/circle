@@ -140,7 +140,10 @@ class Renderer:
                                     valinit=10, valstep=1)
             self.fpsslider.on_changed(self._update_fps)
         self._init_animation()
-        tkinter.mainloop()
+        if args.save:
+            self.save(args.out)
+        else:
+            tkinter.mainloop()
 
     def _init_animation(self):
         self.animation = FuncAnimation(self.fig,
@@ -167,14 +170,12 @@ class Renderer:
             out_fname = f'output/{base_name(args.file_name)}.mp4'
         print(f'saving to {out_fname}')
         self.animation.save(
-            out_fname, writer=FFMpegWriter(fps=10, bitrate=1000))
+            out_fname, writer=FFMpegWriter(fps=100, bitrate=1000))
 
 
 def main(args):
     renderer = Renderer(args.file_name, args.hide, args.n, hide_widgets=args.save)
     renderer.render()
-    if args.save:
-        renderer.save(args.out)
 
 
 if __name__ == '__main__':
