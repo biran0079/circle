@@ -112,6 +112,7 @@ class Renderer:
         if not file_name:
             file_name = askopenfilename(initialdir="output", title="Select param", filetypes=[
                 ("param files", "*.param")])
+        self.file_name = file_name
         X = pickle.load(open(file_name, 'rb'))
         self.plotter = Plotter(X, hide, n)
         self.interval = interval
@@ -167,10 +168,10 @@ class Renderer:
 
     def save(self, out_fname):
         if not out_fname:
-            out_fname = f'output/{base_name(args.file_name)}.mp4'
+            out_fname = f'output/{base_name(self.file_name)}.mp4'
         print(f'saving to {out_fname}')
         self.animation.save(
-            out_fname, writer=FFMpegWriter(fps=100, bitrate=1000))
+            out_fname, writer=FFMpegWriter(fps=10, bitrate=1000))
 
 
 def main(args):
